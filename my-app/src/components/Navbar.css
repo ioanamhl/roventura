@@ -1,0 +1,46 @@
+.navbar {
+  position: fixed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #1e3a8a; /* albastru închis */
+  padding: 1rem 2rem;
+  color: white;
+  font-family: sans-serif;
+  height: 30px;
+    z-index: 1000;       /* să fie deasupra oricărui conținut */
+  width:1455px;
+}
+
+.navbar-left,
+.navbar-center,
+.navbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.navbar-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #FACC15;
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.logout-button {
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  margin-left: 1rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.logout-button:hover {
+  background-color: #b91c1c;
+}

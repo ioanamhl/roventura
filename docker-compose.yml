@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: forum-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: forum
+      MYSQL_USER: forum_user
+      MYSQL_PASSWORD: userpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: forum-pma
+    environment:
+      PMA_HOST: db
+      PMA_USER: forum_user
+      PMA_PASSWORD: userpass
+    ports:
+      - "8080:80"
+
+  backend:
+    build: ./backend
+    container_name: forum-backend
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db          # Folosește aliasul serviciului „db” din Compose
+      DB_USER: forum_user
+      DB_PASS: userpass
+      DB_NAME: forum
+    restart: always
+
+volumes:
+  db_data:
