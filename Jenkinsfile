@@ -15,25 +15,23 @@ pipeline {
 
         stage("Build frontend artifact") {
             steps {
-                powershell """
-                    cd \$env:FRONTEND_DIR
+                dir("${FRONTEND_DIR}") {
+                    powershell "npm.cmd ci"
+                    powershell "npm.cmd run build"
+                }
+            }
+        }
 
-                    npm.cmd ci
-                    npm.cmd run build
-
-                    cd ..
-
-                    if (Test-Path \$env:ARTIFACT_DIR) {
-                        Remove-Item \$env:ARTIFACT_DIR -Recurse -Force
+        stage("Create Jenkins artifact") {
+            steps {
+                powershell '''
+                    if (Test-Path "artifacts") {
+                        Remove-Item "artifacts" -Recurse -Force
                     }
 
-                    New-Item -ItemType Directory -Path \$env:ARTIFACT_DIR | Out-Null
-
-                    Compress-Archive `
-                        -Path "\$env:FRONTEND_DIR\\dist\\*" `
-                        -DestinationPath "\$env:ARTIFACT_DIR\\frontend-dist.zip" `
-                        -Force
-                """
+                    New-Item -ItemType Directory -Path "artifacts" | Out-Null
+                    Compress-Archive -Path "my-app\\dist\\*" -DestinationPath "artifacts\\frontend-dist.zip" -Force
+                '''
             }
         }
 
