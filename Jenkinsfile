@@ -7,43 +7,34 @@ pipeline {
     }
 
     stages {
-        stage("Checkout") {
-            steps {
-                checkout scm
-            }
-        }
-
         stage("Build frontend artifact") {
             steps {
                 dir("${FRONTEND_DIR}") {
-                    powershell "npm.cmd ci"
-                    powershell "npm.cmd run build"
+                    sh "npm ci"
+                    sh "npm run build"
                 }
             }
         }
 
         stage("Create Jenkins artifact") {
             steps {
-                powershell '''
-                    if (Test-Path "artifacts") {
-                        Remove-Item "artifacts" -Recurse -Force
-                    }
-
-                    New-Item -ItemType Directory -Path "artifacts" | Out-Null
-                    Compress-Archive -Path "my-app\\dist\\*" -DestinationPath "artifacts\\frontend-dist.zip" -Force
+                sh '''
+                    rm -rf artifacts
+                    mkdir -p artifacts
+                    tar -czf artifacts/frontend-dist.tar.gz -C my-app/dist .
                 '''
             }
         }
 
         stage("Archive artifact in Jenkins") {
             steps {
-                archiveArtifacts artifacts: "artifacts/frontend-dist.zip", fingerprint: true
+                archiveArtifacts artifacts: "artifacts/frontend-dist.tar.gz", fingerprint: true
             }
         }
 
         stage("Test compose config") {
             steps {
-                powershell """
+                sh """
                     docker compose config
                 """
             }
@@ -51,7 +42,7 @@ pipeline {
 
         stage("Deploy") {
             steps {
-                powershell """
+                sh """
                     docker compose up -d --build
                     docker compose ps
                 """
