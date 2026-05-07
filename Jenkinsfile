@@ -7,11 +7,18 @@ pipeline {
     }
 
     stages {
+        stage("Check Docker") {
+            steps {
+                sh "docker --version"
+                sh "docker compose version"
+            }
+        }
+
         stage("Build frontend artifact") {
             steps {
                 dir("${FRONTEND_DIR}") {
-                    sh "npm ci"
-                    sh "npm run build"
+                    sh 'docker run --rm -v "$PWD:/app" -w /app node:20 npm ci'
+                    sh 'docker run --rm -v "$PWD:/app" -w /app node:20 npm run build'
                 }
             }
         }
