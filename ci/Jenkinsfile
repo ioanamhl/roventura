@@ -176,7 +176,7 @@ void runMdsscScan(String scanPath, String label) {
                 -e VULNERABILITY_THRESHOLD='${params.MDSSC_VULNERABILITY_THRESHOLD}' \
                 ${workflowEnv} \
                 -v "\$PWD/${scanPath}:/scan:ro" \
-                opswat/mdssc-scanner:latest /scan
+                opswat/mdssc-scanner:latest
         """
     }
 }
