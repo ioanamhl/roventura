@@ -1,6 +1,7 @@
 # Jenkins CI/CD
 
 This folder contains the Jenkins pipeline for RoVentura.
+Use this file for small CI trigger tests when you need a harmless repository change.
 
 ## Jenkins job
 
