@@ -34,6 +34,9 @@ pipeline {
         BACKEND_DIR = 'backend'
         FRONTEND_DIR = 'my-app'
         ARTIFACT_DIR = 'artifacts'
+        COMPOSE_PROJECT_NAME = 'roventura'
+        BACKEND_IMAGE = 'roventura-backend'
+        FRONTEND_IMAGE = 'roventura-frontend'
     }
 
     stages {
@@ -99,8 +102,9 @@ pipeline {
                         --exclude=node_modules \
                         --exclude=uploads \
                         -C "$BACKEND_DIR" .
-                    docker compose build
-                    docker save $(docker compose images -q backend frontend) -o "$ARTIFACT_DIR/docker-images.tar"
+                    docker compose build backend frontend
+                    docker image inspect "$BACKEND_IMAGE" "$FRONTEND_IMAGE" >/dev/null
+                    docker save -o "$ARTIFACT_DIR/docker-images.tar" "$BACKEND_IMAGE" "$FRONTEND_IMAGE"
                 '''
             }
         }
