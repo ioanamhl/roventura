@@ -12,22 +12,16 @@ pipeline {
     }
 
     parameters {
+        booleanParam(name: 'RUN_SOURCE_SCAN', defaultValue: true, description: 'Scan source code with OPSWAT MDSSC before building.')
+        booleanParam(name: 'RUN_ARTIFACT_SCAN', defaultValue: true, description: 'Scan build artifacts with OPSWAT MDSSC.')
         booleanParam(name: 'RUN_DEPLOY', defaultValue: false, description: 'Deploy to production VPS after scans pass.')
+        string(name: 'MDSSC_SERVER', defaultValue: '', description: 'MDSSC server URL, for example https://mdssc.example.com.')
+        string(name: 'MDSSC_WORKFLOW_ID', defaultValue: '', description: 'Optional MDSSC workflow ID.')
+        choice(name: 'MDSSC_VULNERABILITY_THRESHOLD', choices: ['critical', 'high', 'medium', 'low'], description: 'Minimum vulnerability severity that fails the build.')
+        booleanParam(name: 'MDSSC_FAIL_ON_VULNERABILITIES', defaultValue: true, description: 'Fail pipeline when MDSSC finds vulnerabilities at or above the threshold.')
         string(name: 'PROD_HOST', defaultValue: '', description: 'Production SSH target, for example deploy@your-vps-ip.')
         string(name: 'PROD_PATH', defaultValue: '/opt/roventura', description: 'Application path on production VPS.')
         string(name: 'PROD_SSH_CREDENTIALS_ID', defaultValue: '', description: 'Jenkins SSH private key credentials ID for production deploy.')
-
-        // Don't implement for now: source code scanning with OPSWAT MDSSC.
-        // booleanParam(name: 'RUN_SOURCE_SCAN', defaultValue: true, description: 'Scan source code with OPSWAT MDSSC before building.')
-
-        // Don't implement for now: artifact scanning with OPSWAT MDSSC.
-        // booleanParam(name: 'RUN_ARTIFACT_SCAN', defaultValue: true, description: 'Scan build artifacts with OPSWAT MDSSC.')
-
-        // MDSSC parameters kept as comments for the future scan implementation.
-        // string(name: 'MDSSC_SERVER', defaultValue: '', description: 'MDSSC server URL, for example https://mdssc.example.com.')
-        // string(name: 'MDSSC_WORKFLOW_ID', defaultValue: '', description: 'Optional MDSSC workflow ID.')
-        // choice(name: 'MDSSC_VULNERABILITY_THRESHOLD', choices: ['critical', 'high', 'medium', 'low'], description: 'Minimum vulnerability severity that fails the build.')
-        // booleanParam(name: 'MDSSC_FAIL_ON_VULNERABILITIES', defaultValue: true, description: 'Fail pipeline when MDSSC finds vulnerabilities at or above the threshold.')
     }
 
     environment {
@@ -58,17 +52,16 @@ pipeline {
             }
         }
 
-        // Don't implement for now: scan source code with OPSWAT MDSSC.
-        // stage('Scan source code with MDSSC') {
-        //     when {
-        //         expression { return params.RUN_SOURCE_SCAN }
-        //     }
-        //     steps {
-        //         script {
-        //             runMdsscScan('.', 'source-code')
-        //         }
-        //     }
-        // }
+        stage('Scan source code with MDSSC') {
+            when {
+                expression { return params.RUN_SOURCE_SCAN }
+            }
+            steps {
+                script {
+                    runMdsscScan('.', 'source-code')
+                }
+            }
+        }
 
         stage('Install dependencies') {
             parallel {
@@ -109,17 +102,16 @@ pipeline {
             }
         }
 
-        // Don't implement for now: scan artifacts with OPSWAT MDSSC.
-        // stage('Scan artifacts with MDSSC') {
-        //     when {
-        //         expression { return params.RUN_ARTIFACT_SCAN }
-        //     }
-        //     steps {
-        //         script {
-        //             runMdsscScan("${ARTIFACT_DIR}", 'build-artifacts')
-        //         }
-        //     }
-        // }
+        stage('Scan artifacts with MDSSC') {
+            when {
+                expression { return params.RUN_ARTIFACT_SCAN }
+            }
+            steps {
+                script {
+                    runMdsscScan("${ARTIFACT_DIR}", 'build-artifacts')
+                }
+            }
+        }
 
         stage('Archive artifacts') {
             steps {
@@ -162,28 +154,27 @@ pipeline {
     }
 }
 
-// Don't implement for now: reusable OPSWAT MDSSC scanner wrapper.
-// void runMdsscScan(String scanPath, String label) {
-//     if (!params.MDSSC_SERVER?.trim()) {
-//         error("MDSSC_SERVER is required when ${label} scanning is enabled.")
-//     }
-//
-//     String workflowEnv = params.MDSSC_WORKFLOW_ID?.trim()
-//         ? "-e WORKFLOW_ID='${params.MDSSC_WORKFLOW_ID.trim()}'"
-//         : ''
-//
-//     withCredentials([string(credentialsId: 'mdssc-api-key', variable: 'MDSSC_API_KEY')]) {
-//         sh """
-//             docker run --rm \
-//                 -e MDSSC_SERVER='${params.MDSSC_SERVER.trim()}' \
-//                 -e MDSSC_API_KEY="\$MDSSC_API_KEY" \
-//                 -e SCAN_TIMEOUT='900' \
-//                 -e POLL_INTERVAL='10' \
-//                 -e FAIL_ON_VULNERABILITIES='${params.MDSSC_FAIL_ON_VULNERABILITIES}' \
-//                 -e VULNERABILITY_THRESHOLD='${params.MDSSC_VULNERABILITY_THRESHOLD}' \
-//                 ${workflowEnv} \
-//                 -v "\$PWD/${scanPath}:/scan:ro" \
-//                 opswat/mdssc-scanner:latest /scan
-//         """
-//     }
-// }
+void runMdsscScan(String scanPath, String label) {
+    if (!params.MDSSC_SERVER?.trim()) {
+        error("MDSSC_SERVER is required when ${label} scanning is enabled.")
+    }
+
+    String workflowEnv = params.MDSSC_WORKFLOW_ID?.trim()
+        ? "-e WORKFLOW_ID='${params.MDSSC_WORKFLOW_ID.trim()}'"
+        : ''
+
+    withCredentials([string(credentialsId: 'mdssc-api-key', variable: 'MDSSC_API_KEY')]) {
+        sh """
+            docker run --rm \
+                -e MDSSC_SERVER='${params.MDSSC_SERVER.trim()}' \
+                -e MDSSC_API_KEY="\$MDSSC_API_KEY" \
+                -e SCAN_TIMEOUT='900' \
+                -e POLL_INTERVAL='10' \
+                -e FAIL_ON_VULNERABILITIES='${params.MDSSC_FAIL_ON_VULNERABILITIES}' \
+                -e VULNERABILITY_THRESHOLD='${params.MDSSC_VULNERABILITY_THRESHOLD}' \
+                ${workflowEnv} \
+                -v "\$PWD/${scanPath}:/scan:ro" \
+                opswat/mdssc-scanner:latest /scan
+        """
+    }
+}

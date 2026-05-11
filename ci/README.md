@@ -53,19 +53,18 @@ Node.js and npm.
 5. Archive artifacts in Jenkins.
 6. Deploy to production VPS, only when `RUN_DEPLOY=true`.
 
-The source code scan and artifact scan stages are present in
-`ci/Jenkinsfile` only as comments because the original requirement marked them
-as "don't implement for now".
+The source code scan and artifact scan stages are implemented with the OPSWAT
+MDSSC CLI scanner container.
 
 ## MDSSC configuration
 
-The future scan implementation can use the official scanner container:
+The scan implementation uses the official scanner container:
 
 ```text
 opswat/mdssc-scanner:latest
 ```
 
-When scan stages are enabled later, set these build parameters in Jenkins:
+Set these build parameters in Jenkins:
 
 ```text
 MDSSC_SERVER=https://your-mdssc-server
@@ -74,7 +73,8 @@ MDSSC_VULNERABILITY_THRESHOLD=high
 MDSSC_FAIL_ON_VULNERABILITIES=true
 ```
 
-For now, the MDSSC parameters and stages are commented in `ci/Jenkinsfile`.
+Disable `RUN_SOURCE_SCAN` or `RUN_ARTIFACT_SCAN` if you want to test the build
+without MDSSC.
 
 ## Production deploy
 
