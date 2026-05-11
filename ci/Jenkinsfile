@@ -15,7 +15,7 @@ pipeline {
         booleanParam(name: 'RUN_SOURCE_SCAN', defaultValue: true, description: 'Scan source code with OPSWAT MDSSC before building.')
         booleanParam(name: 'RUN_ARTIFACT_SCAN', defaultValue: true, description: 'Scan build artifacts with OPSWAT MDSSC.')
         booleanParam(name: 'RUN_DEPLOY', defaultValue: false, description: 'Deploy to production VPS after scans pass.')
-        string(name: 'MDSSC_SERVER', defaultValue: '', description: 'MDSSC server URL, for example https://mdssc.example.com.')
+        string(name: 'MDSSC_SERVER', defaultValue: 'http://35.156.106.42', description: 'MDSSC server URL.')
         string(name: 'MDSSC_WORKFLOW_ID', defaultValue: '', description: 'Optional MDSSC workflow ID.')
         choice(name: 'MDSSC_VULNERABILITY_THRESHOLD', choices: ['critical', 'high', 'medium', 'low'], description: 'Minimum vulnerability severity that fails the build.')
         booleanParam(name: 'MDSSC_FAIL_ON_VULNERABILITIES', defaultValue: true, description: 'Fail pipeline when MDSSC finds vulnerabilities at or above the threshold.')

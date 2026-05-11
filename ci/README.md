@@ -67,7 +67,7 @@ opswat/mdssc-scanner:latest
 Set these build parameters in Jenkins:
 
 ```text
-MDSSC_SERVER=https://your-mdssc-server
+MDSSC_SERVER=http://35.156.106.42
 MDSSC_WORKFLOW_ID=optional-workflow-id
 MDSSC_VULNERABILITY_THRESHOLD=high
 MDSSC_FAIL_ON_VULNERABILITIES=true
