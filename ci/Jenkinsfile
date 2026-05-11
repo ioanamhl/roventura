@@ -155,7 +155,9 @@ pipeline {
 }
 
 void runMdsscScan(String scanPath, String label) {
-    if (!params.MDSSC_SERVER?.trim()) {
+    String mdsscServer = params.MDSSC_SERVER?.trim() ?: 'http://35.156.106.42'
+
+    if (!mdsscServer) {
         error("MDSSC_SERVER is required when ${label} scanning is enabled.")
     }
 
@@ -166,7 +168,7 @@ void runMdsscScan(String scanPath, String label) {
     withCredentials([string(credentialsId: 'mdssc-api-key', variable: 'MDSSC_API_KEY')]) {
         sh """
             docker run --rm \
-                -e MDSSC_SERVER='${params.MDSSC_SERVER.trim()}' \
+                -e MDSSC_SERVER='${mdsscServer}' \
                 -e MDSSC_API_KEY="\$MDSSC_API_KEY" \
                 -e SCAN_TIMEOUT='900' \
                 -e POLL_INTERVAL='10' \
