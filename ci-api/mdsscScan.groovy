@@ -93,7 +93,7 @@ void scanArtifacts(Map config = [:]) {
             max_size_bytes=\$(( ${maxUploadMb} * 1024 * 1024 ))
 
             if [ ${shellQuote(skipLargeArtifacts)} = "true" ] && [ "\$artifact_size_bytes" -gt "\$max_size_bytes" ]; then
-                echo "Skipping MDSSC scan for \$artifact_name because it is larger than ${maxUploadMb} MB."
+                echo "Skipping MDSSC scan for \$artifact_name because it is larger than ${maxUploadMb} MB." >&2
                 continue
             fi
 
