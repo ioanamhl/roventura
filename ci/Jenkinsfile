@@ -108,7 +108,7 @@ pipeline {
             }
             steps {
                 script {
-                    runMdsscScan("${ARTIFACT_DIR}", 'build-artifacts')
+                    runMdsscArtifactScan()
                 }
             }
         }
@@ -177,6 +177,42 @@ void runMdsscScan(String scanPath, String label) {
                 ${workflowEnv} \
                 -v "\$PWD/${scanPath}:/scan:ro" \
                 opswat/mdssc-scanner:latest
+        """
+    }
+}
+
+void runMdsscArtifactScan() {
+    String mdsscServer = params.MDSSC_SERVER?.trim() ?: 'http://35.156.106.42'
+
+    String workflowEnv = params.MDSSC_WORKFLOW_ID?.trim()
+        ? "-e WORKFLOW_ID='${params.MDSSC_WORKFLOW_ID.trim()}'"
+        : ''
+
+    withCredentials([string(credentialsId: 'mdssc-api-key', variable: 'MDSSC_API_KEY')]) {
+        sh """
+            set -eu
+
+            artifact_count=\$(find "\$ARTIFACT_DIR" -maxdepth 1 -type f | wc -l)
+            if [ "\$artifact_count" -eq 0 ]; then
+                echo "No artifact files found in \$ARTIFACT_DIR"
+                exit 1
+            fi
+
+            find "\$ARTIFACT_DIR" -maxdepth 1 -type f -print | while IFS= read -r artifact; do
+                artifact_name=\$(basename "\$artifact")
+                echo "Scanning artifact with MDSSC: \$artifact_name"
+
+                docker run --rm \
+                    -e MDSSC_SERVER='${mdsscServer}' \
+                    -e MDSSC_API_KEY="\$MDSSC_API_KEY" \
+                    -e SCAN_TIMEOUT='900' \
+                    -e POLL_INTERVAL='10' \
+                    -e FAIL_ON_VULNERABILITIES='${params.MDSSC_FAIL_ON_VULNERABILITIES}' \
+                    -e VULNERABILITY_THRESHOLD='${params.MDSSC_VULNERABILITY_THRESHOLD}' \
+                    ${workflowEnv} \
+                    -v "\$PWD/\$artifact:/scan/\$artifact_name:ro" \
+                    opswat/mdssc-scanner:latest "/scan/\$artifact_name"
+            done
         """
     }
 }
