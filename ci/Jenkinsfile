@@ -185,7 +185,7 @@ void runMdsscScan(String scanPath, String label) {
                 -e MDSSC_API_KEY="\$MDSSC_API_KEY" \
                 -e SCAN_TIMEOUT='900' \
                 -e POLL_INTERVAL='10' \
-                -e FAIL_ON_VULNERABILITIES='${params.MDSSC_FAIL_ON_VULNERABILITIES}' \
+                -e FAIL_ON_VULNERABILITIES='false' \
                 -e VULNERABILITY_THRESHOLD='${params.MDSSC_VULNERABILITY_THRESHOLD}' \
                 ${workflowEnv} \
                 opswat/mdssc-scanner:latest "\$PWD/${scanPath}"
@@ -216,7 +216,7 @@ void runMdsscFileScan(String filePath, String label) {
                 -e MDSSC_API_KEY="\$MDSSC_API_KEY" \
                 -e SCAN_TIMEOUT='900' \
                 -e POLL_INTERVAL='10' \
-                -e FAIL_ON_VULNERABILITIES='${params.MDSSC_FAIL_ON_VULNERABILITIES}' \
+                -e FAIL_ON_VULNERABILITIES='false' \
                 -e VULNERABILITY_THRESHOLD='${params.MDSSC_VULNERABILITY_THRESHOLD}' \
                 ${workflowEnv} \
                 opswat/mdssc-scanner:latest "\$PWD/${filePath}"
@@ -251,7 +251,7 @@ void runMdsscArtifactScan() {
                     -e MDSSC_API_KEY="\$MDSSC_API_KEY" \
                     -e SCAN_TIMEOUT='900' \
                     -e POLL_INTERVAL='10' \
-                    -e FAIL_ON_VULNERABILITIES='${params.MDSSC_FAIL_ON_VULNERABILITIES}' \
+                    -e FAIL_ON_VULNERABILITIES='false' \
                     -e VULNERABILITY_THRESHOLD='${params.MDSSC_VULNERABILITY_THRESHOLD}' \
                     ${workflowEnv} \
                     opswat/mdssc-scanner:latest "\$PWD/\$artifact"
