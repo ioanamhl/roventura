@@ -1,0 +1,183 @@
+def mdssc
+
+pipeline {
+    agent any
+
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+
+    options {
+        timestamps()
+        skipDefaultCheckout(false)
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+    }
+
+    parameters {
+        booleanParam(name: 'RUN_SOURCE_SCAN', defaultValue: true, description: 'Scan source code with OPSWAT MDSSC before building.')
+        booleanParam(name: 'RUN_ARTIFACT_SCAN', defaultValue: true, description: 'Scan build artifacts with OPSWAT MDSSC.')
+        booleanParam(name: 'RUN_DEPLOY', defaultValue: false, description: 'Deploy to production VPS after scans pass.')
+        string(name: 'MDSSC_SERVER', defaultValue: 'http://35.156.106.42', description: 'MDSSC server URL.')
+        string(name: 'MDSSC_CREDENTIALS_ID', defaultValue: 'mdssc-api-key', description: 'Jenkins secret text credentials ID for the MDSSC API key.')
+        string(name: 'MDSSC_WORKFLOW_ID', defaultValue: '', description: 'Optional MDSSC workflow ID.')
+        string(name: 'MDSSC_SCAN_TIMEOUT', defaultValue: '900', description: 'MDSSC scan timeout in seconds.')
+        string(name: 'MDSSC_POLL_INTERVAL', defaultValue: '10', description: 'MDSSC poll interval in seconds.')
+        choice(name: 'MDSSC_VULNERABILITY_THRESHOLD', choices: ['critical', 'high', 'medium', 'low'], description: 'Minimum vulnerability severity that fails the build.')
+        booleanParam(name: 'MDSSC_FAIL_ON_VULNERABILITIES', defaultValue: false, description: 'Fail pipeline when MDSSC finds vulnerabilities at or above the threshold.')
+        booleanParam(name: 'MDSSC_SKIP_LARGE_ARTIFACTS', defaultValue: true, description: 'Skip artifacts larger than MDSSC_MAX_UPLOAD_MB instead of failing on HTTP 413.')
+        string(name: 'MDSSC_MAX_UPLOAD_MB', defaultValue: '100', description: 'Maximum artifact size uploaded to MDSSC when skipping large artifacts is enabled.')
+        string(name: 'PROD_HOST', defaultValue: '', description: 'Production SSH target, for example deploy@your-vps-ip.')
+        string(name: 'PROD_PATH', defaultValue: '/opt/roventura', description: 'Application path on production VPS.')
+        string(name: 'PROD_SSH_CREDENTIALS_ID', defaultValue: '', description: 'Jenkins SSH private key credentials ID for production deploy.')
+    }
+
+    environment {
+        BACKEND_DIR = 'backend'
+        FRONTEND_DIR = 'my-app'
+        ARTIFACT_DIR = 'artifacts'
+        COMPOSE_PROJECT_NAME = 'roventura'
+        BACKEND_IMAGE = 'roventura-backend'
+        FRONTEND_IMAGE = 'roventura-frontend'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    mdssc = load 'ci-api/mdsscScan.groovy'
+                }
+                sh 'git rev-parse --abbrev-ref HEAD || true'
+                sh 'git rev-parse --short HEAD || true'
+            }
+        }
+
+        stage('Prepare') {
+            steps {
+                sh 'docker --version'
+                sh 'docker compose version'
+                sh 'node --version'
+                sh 'npm --version'
+                sh 'rm -rf "$ARTIFACT_DIR" && mkdir -p "$ARTIFACT_DIR"'
+                sh '''
+                    tar -czf "$ARTIFACT_DIR/source-code.tar.gz" \
+                        --exclude=.git \
+                        --exclude=artifacts \
+                        --exclude=node_modules \
+                        --exclude='*/node_modules' \
+                        --exclude='*/dist' \
+                        --exclude='*/build' \
+                        --exclude='*/coverage' \
+                        --exclude='*.log' \
+                        .
+                '''
+            }
+        }
+
+        stage('Scan source code with MDSSC API wrapper') {
+            when {
+                expression { return params.RUN_SOURCE_SCAN }
+            }
+            steps {
+                script {
+                    mdssc.scanFile(
+                        path: "${ARTIFACT_DIR}/source-code.tar.gz",
+                        label: 'source-code'
+                    )
+                }
+            }
+        }
+
+        stage('Install dependencies') {
+            parallel {
+                stage('Backend dependencies') {
+                    steps {
+                        dir("${BACKEND_DIR}") {
+                            sh 'npm ci'
+                        }
+                    }
+                }
+
+                stage('Frontend dependencies') {
+                    steps {
+                        dir("${FRONTEND_DIR}") {
+                            sh 'npm ci'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build artifacts') {
+            steps {
+                dir("${FRONTEND_DIR}") {
+                    sh 'npm run build'
+                }
+
+                sh '''
+                    tar -czf "$ARTIFACT_DIR/frontend-dist.tar.gz" -C "$FRONTEND_DIR/dist" .
+                    tar -czf "$ARTIFACT_DIR/backend-source.tar.gz" \
+                        --exclude=node_modules \
+                        --exclude=uploads \
+                        -C "$BACKEND_DIR" .
+                    docker compose build backend frontend
+                    docker image inspect "$BACKEND_IMAGE" "$FRONTEND_IMAGE" >/dev/null
+                    docker save -o "$ARTIFACT_DIR/docker-images.tar" "$BACKEND_IMAGE" "$FRONTEND_IMAGE"
+                '''
+            }
+        }
+
+        stage('Scan artifacts with MDSSC API wrapper') {
+            when {
+                expression { return params.RUN_ARTIFACT_SCAN }
+            }
+            steps {
+                script {
+                    mdssc.scanArtifacts(
+                        artifactDir: "${ARTIFACT_DIR}",
+                        excludeNames: ['source-code.tar.gz']
+                    )
+                }
+            }
+        }
+
+        stage('Archive artifacts') {
+            steps {
+                archiveArtifacts artifacts: "${ARTIFACT_DIR}/**", fingerprint: true
+            }
+        }
+
+        stage('Deploy to production') {
+            when {
+                allOf {
+                    expression { return params.RUN_DEPLOY }
+                    expression { return params.PROD_HOST?.trim() }
+                    expression { return params.PROD_SSH_CREDENTIALS_ID?.trim() }
+                }
+            }
+            steps {
+                sshagent(credentials: [params.PROD_SSH_CREDENTIALS_ID]) {
+                    sh '''
+                        tar \
+                            --exclude .git \
+                            --exclude node_modules \
+                            --exclude artifacts \
+                            -czf - . | ssh -o StrictHostKeyChecking=no "$PROD_HOST" "mkdir -p '$PROD_PATH' && tar -xzf - -C '$PROD_PATH' && cd '$PROD_PATH' && docker compose up -d --build"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'CI/CD pipeline completed successfully.'
+        }
+        failure {
+            echo 'Pipeline failed. Check Jenkins console logs.'
+        }
+        always {
+            deleteDir()
+        }
+    }
+}
