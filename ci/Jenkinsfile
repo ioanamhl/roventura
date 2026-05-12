@@ -49,6 +49,18 @@ pipeline {
                 sh 'node --version'
                 sh 'npm --version'
                 sh 'rm -rf "$ARTIFACT_DIR" && mkdir -p "$ARTIFACT_DIR"'
+                sh '''
+                    tar -czf "$ARTIFACT_DIR/source-code.tar.gz" \
+                        --exclude=.git \
+                        --exclude=artifacts \
+                        --exclude=node_modules \
+                        --exclude='*/node_modules' \
+                        --exclude='*/dist' \
+                        --exclude='*/build' \
+                        --exclude='*/coverage' \
+                        --exclude='*.log' \
+                        .
+                '''
             }
         }
 
@@ -58,7 +70,7 @@ pipeline {
             }
             steps {
                 script {
-                    runMdsscScan('.', 'source-code')
+                    runMdsscFileScan("${ARTIFACT_DIR}/source-code.tar.gz", 'source-code')
                 }
             }
         }
@@ -181,6 +193,37 @@ void runMdsscScan(String scanPath, String label) {
     }
 }
 
+void runMdsscFileScan(String filePath, String label) {
+    String mdsscServer = params.MDSSC_SERVER?.trim() ?: 'http://35.156.106.42'
+
+    String workflowEnv = params.MDSSC_WORKFLOW_ID?.trim()
+        ? "-e WORKFLOW_ID='${params.MDSSC_WORKFLOW_ID.trim()}'"
+        : ''
+
+    withCredentials([string(credentialsId: 'mdssc-api-key', variable: 'MDSSC_API_KEY')]) {
+        sh """
+            set -eu
+            if [ ! -f "${filePath}" ]; then
+                echo "MDSSC ${label} input file not found: ${filePath}"
+                exit 1
+            fi
+
+            echo "Scanning ${label} with MDSSC: ${filePath}"
+
+            docker run --rm \
+                --volumes-from "\$HOSTNAME" \
+                -e MDSSC_SERVER='${mdsscServer}' \
+                -e MDSSC_API_KEY="\$MDSSC_API_KEY" \
+                -e SCAN_TIMEOUT='900' \
+                -e POLL_INTERVAL='10' \
+                -e FAIL_ON_VULNERABILITIES='${params.MDSSC_FAIL_ON_VULNERABILITIES}' \
+                -e VULNERABILITY_THRESHOLD='${params.MDSSC_VULNERABILITY_THRESHOLD}' \
+                ${workflowEnv} \
+                opswat/mdssc-scanner:latest "\$PWD/${filePath}"
+        """
+    }
+}
+
 void runMdsscArtifactScan() {
     String mdsscServer = params.MDSSC_SERVER?.trim() ?: 'http://35.156.106.42'
 
@@ -198,7 +241,7 @@ void runMdsscArtifactScan() {
                 exit 1
             fi
 
-            find "\$ARTIFACT_DIR" -maxdepth 1 -type f -print | while IFS= read -r artifact; do
+            find "\$ARTIFACT_DIR" -maxdepth 1 -type f ! -name 'source-code.tar.gz' -print | while IFS= read -r artifact; do
                 artifact_name=\$(basename "\$artifact")
                 echo "Scanning artifact with MDSSC: \$artifact_name"
 
