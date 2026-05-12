@@ -168,6 +168,7 @@ void runMdsscScan(String scanPath, String label) {
     withCredentials([string(credentialsId: 'mdssc-api-key', variable: 'MDSSC_API_KEY')]) {
         sh """
             docker run --rm \
+                --volumes-from "\$HOSTNAME" \
                 -e MDSSC_SERVER='${mdsscServer}' \
                 -e MDSSC_API_KEY="\$MDSSC_API_KEY" \
                 -e SCAN_TIMEOUT='900' \
@@ -175,8 +176,7 @@ void runMdsscScan(String scanPath, String label) {
                 -e FAIL_ON_VULNERABILITIES='${params.MDSSC_FAIL_ON_VULNERABILITIES}' \
                 -e VULNERABILITY_THRESHOLD='${params.MDSSC_VULNERABILITY_THRESHOLD}' \
                 ${workflowEnv} \
-                -v "\$PWD/${scanPath}:/scan:ro" \
-                opswat/mdssc-scanner:latest
+                opswat/mdssc-scanner:latest "\$PWD/${scanPath}"
         """
     }
 }
@@ -203,6 +203,7 @@ void runMdsscArtifactScan() {
                 echo "Scanning artifact with MDSSC: \$artifact_name"
 
                 docker run --rm \
+                    --volumes-from "\$HOSTNAME" \
                     -e MDSSC_SERVER='${mdsscServer}' \
                     -e MDSSC_API_KEY="\$MDSSC_API_KEY" \
                     -e SCAN_TIMEOUT='900' \
@@ -210,8 +211,7 @@ void runMdsscArtifactScan() {
                     -e FAIL_ON_VULNERABILITIES='${params.MDSSC_FAIL_ON_VULNERABILITIES}' \
                     -e VULNERABILITY_THRESHOLD='${params.MDSSC_VULNERABILITY_THRESHOLD}' \
                     ${workflowEnv} \
-                    -v "\$PWD/\$artifact:/scan/\$artifact_name:ro" \
-                    opswat/mdssc-scanner:latest "/scan/\$artifact_name"
+                    opswat/mdssc-scanner:latest "\$PWD/\$artifact"
             done
         """
     }
