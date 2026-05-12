@@ -1,8 +1,8 @@
 # Jenkins CI/CD with MDSSC API wrapper
 
-This folder contains an alternative Jenkins pipeline that keeps the MDSSC scan
-logic in a reusable Groovy wrapper instead of embedding all scanner commands in
-the Jenkinsfile.
+This folder contains an alternative Jenkins pipeline that calls the MDSSC REST
+API directly from a reusable Groovy wrapper instead of using the MDSSC CLI
+scanner container.
 
 Use this Jenkins script path:
 
@@ -16,7 +16,7 @@ The wrapper is loaded from:
 ci-api/mdsscScan.groovy
 ```
 
-The Jenkinsfile calls the wrapper as an API:
+The Jenkinsfile calls the wrapper functions:
 
 ```groovy
 mdssc.scanFile(path: 'artifacts/source-code.tar.gz', label: 'source-code')
@@ -43,6 +43,7 @@ MDSSC_CREDENTIALS_ID=your-credential-id
 
 ```text
 MDSSC_SERVER=http://35.156.106.42
+MDSSC_API_KEY_HEADER=apikey
 MDSSC_WORKFLOW_ID=optional-workflow-id
 MDSSC_SCAN_TIMEOUT=900
 MDSSC_POLL_INTERVAL=10
@@ -50,6 +51,18 @@ MDSSC_VULNERABILITY_THRESHOLD=critical
 MDSSC_FAIL_ON_VULNERABILITIES=false
 MDSSC_SKIP_LARGE_ARTIFACTS=true
 MDSSC_MAX_UPLOAD_MB=100
+```
+
+The direct API wrapper submits files with:
+
+```text
+POST /api/v1/scans/direct
+```
+
+and then polls scan results with:
+
+```text
+GET /api/v1/scans/{scanId}
 ```
 
 `MDSSC_SKIP_LARGE_ARTIFACTS=true` prevents oversized files such as
