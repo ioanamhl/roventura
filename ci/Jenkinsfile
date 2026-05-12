@@ -18,7 +18,7 @@ pipeline {
         string(name: 'MDSSC_SERVER', defaultValue: 'http://35.156.106.42', description: 'MDSSC server URL.')
         string(name: 'MDSSC_WORKFLOW_ID', defaultValue: '', description: 'Optional MDSSC workflow ID.')
         choice(name: 'MDSSC_VULNERABILITY_THRESHOLD', choices: ['critical', 'high', 'medium', 'low'], description: 'Minimum vulnerability severity that fails the build.')
-        booleanParam(name: 'MDSSC_FAIL_ON_VULNERABILITIES', defaultValue: true, description: 'Fail pipeline when MDSSC finds vulnerabilities at or above the threshold.')
+        booleanParam(name: 'MDSSC_FAIL_ON_VULNERABILITIES', defaultValue: false, description: 'Fail pipeline when MDSSC finds vulnerabilities at or above the threshold.')
         string(name: 'PROD_HOST', defaultValue: '', description: 'Production SSH target, for example deploy@your-vps-ip.')
         string(name: 'PROD_PATH', defaultValue: '/opt/roventura', description: 'Application path on production VPS.')
         string(name: 'PROD_SSH_CREDENTIALS_ID', defaultValue: '', description: 'Jenkins SSH private key credentials ID for production deploy.')

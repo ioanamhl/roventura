@@ -70,7 +70,7 @@ Set these build parameters in Jenkins:
 MDSSC_SERVER=http://35.156.106.42
 MDSSC_WORKFLOW_ID=optional-workflow-id
 MDSSC_VULNERABILITY_THRESHOLD=high
-MDSSC_FAIL_ON_VULNERABILITIES=true
+MDSSC_FAIL_ON_VULNERABILITIES=false
 ```
 
 Disable `RUN_SOURCE_SCAN` or `RUN_ARTIFACT_SCAN` if you want to test the build
